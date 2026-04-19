@@ -1,0 +1,47 @@
+# ── Vector Store (can be huge, re-generate locally) ──
+chroma_db/
+
+# ── API Keys & Secrets ────────────────────────────────
+.env
+config_secret.py
+*.key
+
+# ── Python ────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Virtual Environment ───────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ── Uploaded / Temp Files ─────────────────────────────
+*.pdf
+*.csv
+uploads/
+temp/
+tmp/
+
+# ── OS Files ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ───────────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+
+# ── Streamlit ─────────────────────────────────────────
+.streamlit/secrets.toml
+
+# ── Logs ──────────────────────────────────────────────
+*.log
+logs/
