@@ -26,10 +26,12 @@ from vectorstore.chroma_store import as_retriever, collection_count
 # ── prompt template ───────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """You are a knowledgeable assistant. Answer the user's question
-using ONLY the context passages provided below. If the answer cannot be found in
-the context, say so clearly — do NOT make up information.
+using ONLY the context passages provided below. 
 
-Be concise, accurate, and cite the source URLs when available.
+IMPORTANT:
+- The answer may be spread across multiple sections — read ALL context carefully
+- If the information seems incomplete, say what you found and what might be missing
+- Never stop mid-answer — always give a complete response
 
 Context:
 {context}"""

@@ -68,7 +68,6 @@ def add_documents(docs: List[Document], reset: bool = False) -> int:
     store = get_store(reset=reset)
     print(f"[chroma_store] Embedding {len(docs)} chunks … (this may take a moment)")
     store.add_documents(docs)
-    store.persist()
     total = store._collection.count()
     print(f"[chroma_store] ✓ Done — total vectors in store: {total}")
     return len(docs)
