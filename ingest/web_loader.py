@@ -18,7 +18,9 @@ from langchain_core.documents import Document
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_community.document_loaders.recursive_url_loader import RecursiveUrlLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+import warnings
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 import config
 
@@ -27,8 +29,10 @@ import config
 
 def _html_extractor(raw_html: str) -> str:
     """Strip tags, collapse whitespace."""
-    soup = BeautifulSoup(raw_html, "html.parser")
-    # Remove script / style noise
+    try:
+        soup = BeautifulSoup(raw_html, "lxml")   # changed from html.parser
+    except Exception:
+        soup = BeautifulSoup(raw_html, "html.parser")  # fallback
     for tag in soup(["script", "style", "nav", "footer", "header"]):
         tag.decompose()
     return " ".join(soup.get_text(separator=" ").split())
