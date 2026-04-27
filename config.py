@@ -3,8 +3,11 @@
 # ─────────────────────────────────────────────
 
 # Ollama model to use for generation & embeddings
-LLM_MODEL = "llama3.1:8b" 
-EMBED_MODEL      = "nomic-embed-text"          # or "nomic-embed-text" for faster embeddings
+#LLM_MODEL = "llama3.1:8b" 
+#EMBED_MODEL      = "nomic-embed-text"          # or "nomic-embed-text" for faster embeddings
+GEMINI_API_KEY  = ""
+LLM_MODEL       = "gemini-2.5-flash"
+EMBED_MODEL = "gemini-embedding-001"
 
 # Ollama base URL (default local)
 OLLAMA_BASE_URL  = "http://localhost:11434"
@@ -14,11 +17,11 @@ CHROMA_DIR       = "./chroma_db"
 COLLECTION_NAME  = "rag_collection"
 
 # Chunking settings
-CHUNK_SIZE       = 1200
-CHUNK_OVERLAP    = 150
+CHUNK_SIZE       = 1500
+CHUNK_OVERLAP    = 200
 
 # Retrieval settings
-TOP_K            = 8                 # number of chunks returned per query
+TOP_K            = 10                # number of chunks returned per query
 
 # Web crawler settings
 MAX_CRAWL_DEPTH  = 3                 # how deep to follow links

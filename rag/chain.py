@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from typing import Iterator, List, Optional
 
-from langchain_ollama import OllamaLLM
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -54,14 +54,11 @@ def _format_docs(docs: List[Document]) -> str:
     return "\n\n".join(parts)
 
 
-def _llm() -> OllamaLLM:
-    return OllamaLLM(
+def _llm():
+    return ChatGoogleGenerativeAI(
         model=config.LLM_MODEL,
-        base_url=config.OLLAMA_BASE_URL,
+        google_api_key=config.GEMINI_API_KEY,
         temperature=0.2,
-        num_predict=512,      # max tokens in response
-        num_ctx=4096,         # context window size
-        repeat_penalty=1.1,   # reduces repetition
     )
 
 
