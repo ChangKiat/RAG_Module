@@ -33,13 +33,24 @@ def _embeddings():
 
 
 def get_store(reset: bool = False) -> Chroma:
-    """Return (or create) the persistent Chroma vector store."""
     global _store
     if reset and os.path.exists(config.CHROMA_DIR):
-        import shutil
-        shutil.rmtree(config.CHROMA_DIR)
-        print("[chroma_store] 🗑  Existing store deleted.")
-        _store = None
+        # ── Close existing store first (Windows file lock fix) ──
+        if _store is not None:
+            try:
+                _store._client._system.stop()
+            except Exception:
+                pass
+            _store = None
+
+        import shutil, time
+        time.sleep(0.5)   # give Windows a moment to release the lock
+        try:
+            shutil.rmtree(config.CHROMA_DIR)
+            print("[chroma_store] 🗑  Existing store deleted.")
+        except PermissionError:
+            print("[chroma_store] ⚠  Could not delete store — close and restart the app, then try again.")
+            raise
 
     if _store is None:
         _store = Chroma(

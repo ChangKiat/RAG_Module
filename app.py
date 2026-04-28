@@ -20,7 +20,7 @@ from rag.chain           import ask_stream, ask
 #  Page config
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="RAG · Llama",
+    page_title="RAG · AI",
     page_icon="🦙",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -226,37 +226,56 @@ with st.sidebar:
                         st.error(f"Error: {e}")
 
     with tab_file:
-        uploaded = st.file_uploader(
-            "Upload a document",
+        uploaded_files = st.file_uploader(
+            "Upload documents",
             type=["pdf", "txt", "md", "html", "csv"],
             key="file_upload",
+            accept_multiple_files=True,   # ← this is the key change
         )
         reset_on_file = st.checkbox("🗑 Reset store before ingesting", key="reset_file")
 
-        if st.button("Ingest File ▶", key="btn_file"):
-            if not uploaded:
-                st.warning("Please upload a file first.")
+        if st.button("Ingest Files ▶", key="btn_file"):  # ← indented inside tab_file
+            if not uploaded_files:
+                st.warning("Please upload at least one file.")
             else:
-                # save to temp and load
                 import tempfile, pathlib
-                with tempfile.NamedTemporaryFile(
-                    delete=False,
-                    suffix=pathlib.Path(uploaded.name).suffix,
-                ) as tmp:
-                    tmp.write(uploaded.read())
-                    tmp_path = tmp.name
+                all_docs = []
+                failed = []
 
-                with st.spinner(f"Processing {uploaded.name} …"):
+                progress = st.progress(0, text="Starting …")
+
+                for i, uploaded in enumerate(uploaded_files):
+                    progress.progress(
+                        int((i / len(uploaded_files)) * 100),
+                        text=f"Processing {uploaded.name} …"
+                    )
+                    with tempfile.NamedTemporaryFile(
+                        delete=False,
+                        suffix=pathlib.Path(uploaded.name).suffix,
+                    ) as tmp:
+                        tmp.write(uploaded.read())
+                        tmp_path = tmp.name
+
                     try:
                         docs = load_file(tmp_path)
-                        added = add_documents(docs, reset=reset_on_file)
-                        st.success(f"✓ Added {added} chunks from {uploaded.name}")
+                        all_docs.extend(docs)
                         st.session_state.ingested_sources.append(f"📄 {uploaded.name}")
-                        st.rerun()
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        failed.append(f"{uploaded.name}: {e}")
                     finally:
                         os.unlink(tmp_path)
+
+                progress.progress(100, text="Embedding …")
+
+                if all_docs:
+                    added = add_documents(all_docs, reset=reset_on_file)
+                    progress.empty()
+                    st.success(f"✓ Added {added} chunks from {len(uploaded_files) - len(failed)} file(s)")
+
+                if failed:
+                    for f in failed:
+                        st.error(f"⚠ Failed: {f}")
+
 
     st.divider()
 
