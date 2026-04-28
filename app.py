@@ -339,16 +339,27 @@ chat_html += "</div>"
 st.markdown(chat_html, unsafe_allow_html=True)
 
 # ── input bar ────────────────────────────────────────────────────────────────
-col_q, col_btn = st.columns([9, 1])
-with col_q:
-    question = st.text_input(
-        "question",
-        label_visibility="collapsed",
-        placeholder="Ask anything about your ingested content …",
-        key="question_input",
-    )
-with col_btn:
-    send = st.button("Ask", key="btn_ask", use_container_width=True)
+with st.form(key="chat_form", clear_on_submit=True):
+    col_q, col_btn = st.columns([9, 1])
+    with col_q:
+        question = st.text_input(
+            "question",
+            label_visibility="collapsed",
+            placeholder="Ask anything about your ingested content …",
+        )
+    with col_btn:
+        send = st.form_submit_button("Ask", use_container_width=True)
+
+if send and question.strip():
+    st.session_state.messages.append({"role": "user", "content": question.strip(), "sources": []})
+
+    with st.spinner("Thinking …"):
+        result = ask(question.strip())
+        answer  = result["answer"]
+        sources = result["sources"]
+
+    st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources})
+    st.rerun()
 
 # ── handle send ───────────────────────────────────────────────────────────────
 if send and question.strip():
