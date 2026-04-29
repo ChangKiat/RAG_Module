@@ -5,7 +5,11 @@
 # Ollama model to use for generation & embeddings
 #LLM_MODEL = "llama3.1:8b" 
 #EMBED_MODEL      = "nomic-embed-text"          # or "nomic-embed-text" for faster embeddings
-GEMINI_API_KEY  = ""
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+GEMINI_API_KEY  = os.getenv("GEMINI_API_KEY", "")
 LLM_MODEL       = "gemini-2.5-flash"
 EMBED_MODEL = "gemini-embedding-001"
 
