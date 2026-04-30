@@ -20,6 +20,9 @@ OLLAMA_BASE_URL  = "http://localhost:11434"
 CHROMA_DIR       = "./chroma_db"
 COLLECTION_NAME  = "rag_collection"
 
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
+PINECONE_INDEX   = "rag-gemini"
+
 # Chunking settings
 CHUNK_SIZE       = 1500
 CHUNK_OVERLAP    = 200
