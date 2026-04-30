@@ -20,7 +20,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
 import config
-from vectorstore.chroma_store import as_retriever, collection_count
+from vectorstore.pinecone_store import as_retriever, collection_count
 
 
 # ── prompt template ───────────────────────────────────────────────────────────

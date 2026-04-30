@@ -29,3 +29,18 @@ pydantic>=2.7.0
 # ── Utilities ────────────────────────────────────
 requests>=2.31.0
 python-dotenv>=1.0.0
+
+pinecone-client
+langchain-pinecone
+langchain-google-genai
+google-generativeai
+langchain
+langchain-community
+langchain-core
+langchain-text-splitters
+streamlit
+streamlit-extras
+beautifulsoup4
+lxml
+pypdf
+python-dotenv

@@ -13,7 +13,7 @@ from streamlit_extras.colored_header import colored_header   # pip install strea
 
 from ingest.web_loader   import load_single_url, load_website
 from ingest.doc_loader   import load_file
-from vectorstore.chroma_store import add_documents, collection_count, reset_store
+from vectorstore.pinecone_store import add_documents, collection_count, reset_store
 from rag.chain           import ask_stream, ask
 
 # ─────────────────────────────────────────────────────────────────────────────
