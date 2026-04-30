@@ -30,7 +30,7 @@ def _init_pinecone():
     if config.PINECONE_INDEX not in existing:
         pc.create_index(
             name=config.PINECONE_INDEX,
-            dimension=768,
+            dimension=3072,        # ← changed from 768 to 3072
             metric="cosine",
             spec=ServerlessSpec(cloud="aws", region="us-east-1")
         )
