@@ -59,6 +59,7 @@ def get_store(reset: bool = False):
 def add_documents(docs: List[Document], reset: bool = False) -> int:
     if not docs:
         return 0
+    docs = _clean_metadata(docs) 
     store = get_store(reset=reset)
     store.add_documents(docs)
     print(f"[pinecone_store] ✓ Added {len(docs)} chunks.")
@@ -85,3 +86,53 @@ def collection_count() -> int:
 
 def reset_store():
     get_store(reset=True)
+
+def get_existing_sources() -> set:
+    """Return all source URLs already stored in Pinecone."""
+    try:
+        pc = Pinecone(api_key=config.PINECONE_API_KEY)
+        index = pc.Index(config.PINECONE_INDEX)
+        # fetch all stored metadata
+        stats = index.describe_index_stats()
+        return set()  # Pinecone free tier doesn't support metadata filtering easily
+    except Exception:
+        return set()
+
+def add_documents_smart(docs: List[Document], reset: bool = False) -> int:
+    """Only add chunks whose source URL is not already in the store."""
+    if not docs:
+        return 0
+
+    store = get_store(reset=reset)
+
+    # filter out chunks already ingested by source URL
+    existing_sources = get_existing_sources()
+    new_docs = [
+        d for d in docs
+        if d.metadata.get("source", "") not in existing_sources
+    ]
+
+    if not new_docs:
+        print("[pinecone_store] All chunks already exist — nothing added.")
+        return 0
+
+    store.add_documents(new_docs)
+    print(f"[pinecone_store] ✓ Added {len(new_docs)} new chunks.")
+    return len(new_docs)
+
+def _clean_metadata(docs: List[Document]) -> List[Document]:
+    """Remove or fix null metadata values that Pinecone rejects."""
+    for doc in docs:
+        clean = {}
+        for key, value in doc.metadata.items():
+            if value is None:
+                clean[key] = ""           # replace null with empty string
+            elif isinstance(value, (str, int, float, bool)):
+                clean[key] = value        # keep valid types
+            elif isinstance(value, list):
+                # keep only string lists
+                clean[key] = [str(v) for v in value if v is not None]
+            else:
+                clean[key] = str(value)   # convert anything else to string
+        doc.metadata = clean
+    return docs

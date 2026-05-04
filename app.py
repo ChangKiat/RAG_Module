@@ -179,6 +179,8 @@ if "ingested_sources" not in st.session_state:
     st.session_state.ingested_sources = []  # display log
 if "ingested_files" not in st.session_state:
     st.session_state.ingested_files = set()  # track filenames already ingested
+if "ingested_urls" not in st.session_state:
+    st.session_state.ingested_urls = set()  # track URLs already ingested
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -214,18 +216,24 @@ with st.sidebar:
             if not url_input.strip():
                 st.warning("Please enter a URL.")
             else:
-                with st.spinner("Loading website content …"):
-                    try:
-                        if crawl_mode == "Crawl whole site":
-                            docs = load_website(url_input.strip(), max_depth=crawl_depth, max_pages=crawl_pages)
-                        else:
-                            docs = load_single_url(url_input.strip())
-                        added = add_documents(docs, reset=reset_on_web)
-                        st.success(f"✓ Added {added} chunks from {url_input}")
-                        st.session_state.ingested_sources.append(f"🌐 {url_input}")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                url = url_input.strip()
+
+                if url in st.session_state.ingested_urls and not reset_on_web:
+                    st.info(f"⏭ Already ingested: {url} — tick 'Reset store' to force re-ingest.")
+                else:
+                    with st.spinner("Loading website content …"):
+                        try:
+                            if crawl_mode == "Crawl whole site":
+                                docs = load_website(url_input.strip(), max_depth=crawl_depth, max_pages=crawl_pages)
+                            else:
+                                docs = load_single_url(url_input.strip())
+                            added = add_documents(docs, reset=reset_on_web)
+                            st.success(f"✓ Added {added} chunks from {url_input}")
+                            st.session_state.ingested_sources.append(f"🌐 {url_input}")
+                            st.session_state.ingested_urls.add(url)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
 
     with tab_file:
         uploaded_files = st.file_uploader(
