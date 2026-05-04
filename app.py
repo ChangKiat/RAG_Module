@@ -177,6 +177,8 @@ if "messages" not in st.session_state:
     st.session_state.messages = []          # list of {role, content, sources}
 if "ingested_sources" not in st.session_state:
     st.session_state.ingested_sources = []  # display log
+if "ingested_files" not in st.session_state:
+    st.session_state.ingested_files = set()  # track filenames already ingested
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -241,6 +243,7 @@ with st.sidebar:
                 import tempfile, pathlib
                 all_docs = []
                 failed = []
+                skipped = []
 
                 progress = st.progress(0, text="Starting …")
 
@@ -249,6 +252,10 @@ with st.sidebar:
                         int((i / len(uploaded_files)) * 100),
                         text=f"Processing {uploaded.name} …"
                     )
+                    if uploaded.name in st.session_state.ingested_files:
+                        skipped.append(uploaded.name)
+                        continue
+
                     with tempfile.NamedTemporaryFile(
                         delete=False,
                         suffix=pathlib.Path(uploaded.name).suffix,
@@ -260,6 +267,7 @@ with st.sidebar:
                         docs = load_file(tmp_path)
                         all_docs.extend(docs)
                         st.session_state.ingested_sources.append(f"📄 {uploaded.name}")
+                        st.session_state.ingested_files.add(uploaded.name)  # mark as done
                     except Exception as e:
                         failed.append(f"{uploaded.name}: {e}")
                     finally:
@@ -271,6 +279,9 @@ with st.sidebar:
                     added = add_documents(all_docs, reset=reset_on_file)
                     progress.empty()
                     st.success(f"✓ Added {added} chunks from {len(uploaded_files) - len(failed)} file(s)")
+
+                if skipped:
+                    st.info(f"⏭ Skipped {len(skipped)} already ingested: {', '.join(skipped)}")
 
                 if failed:
                     for f in failed:
