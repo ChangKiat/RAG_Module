@@ -2,37 +2,41 @@
 #  RAG-Llama  ·  Central Configuration
 # ─────────────────────────────────────────────
 
-# Ollama model to use for generation & embeddings
-#LLM_MODEL = "llama3.1:8b" 
-#EMBED_MODEL      = "nomic-embed-text"          # or "nomic-embed-text" for faster embeddings
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
+# Chat (Gemini)
 GEMINI_API_KEY  = os.getenv("GEMINI_API_KEY", "")
 LLM_MODEL       = "gemini-2.5-flash"
-EMBED_MODEL = "gemini-embedding-001"
 
-# Ollama base URL (default local)
-OLLAMA_BASE_URL  = "http://localhost:11434"
+# Embeddings (Ollama / Llama ecosystem)
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+EMBED_MODEL     = "nomic-embed-text"
+EMBED_DIMENSION = 768
 
 # ChromaDB persistence directory
 CHROMA_DIR       = "./chroma_db"
 COLLECTION_NAME  = "rag_collection"
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
-PINECONE_INDEX   = "rag-gemini"
+PINECONE_INDEX   = "rag-llama"
 
-# Chunking settings
-CHUNK_SIZE       = 1500
+# Chunking (web + default file types)
+CHUNK_SIZE       = 1200
 CHUNK_OVERLAP    = 200
+# PDF-specific chunking (larger chunks for long-form docs)
+PDF_CHUNK_SIZE   = 1500
+PDF_CHUNK_OVERLAP = 250
+MIN_CHUNK_CHARS  = 80
 
-# Retrieval settings
-TOP_K            = 10                # number of chunks returned per query
+# Retrieval
+TOP_K            = 5
+FETCH_K          = 15
 
 # Web crawler settings
-MAX_CRAWL_DEPTH  = 3                 # how deep to follow links
-MAX_CRAWL_PAGES  = 50                # hard cap on pages crawled
+MAX_CRAWL_DEPTH  = 3
+MAX_CRAWL_PAGES  = 50
 
-# Supported document extensions for doc_loader
-SUPPORTED_EXTENSIONS = [".pdf", ".txt", ".md", ".html", ".csv"]
+# Supported document extensions for doc_loader (PDF + web via web_loader)
+SUPPORTED_EXTENSIONS = [".pdf"]

@@ -19,12 +19,12 @@ from pydantic import BaseModel, HttpUrl
 
 from ingest.web_loader import load_single_url, load_website, load_urls
 from ingest.doc_loader  import load_file, load_directory
-from vectorstore.chroma_store import add_documents, collection_count, reset_store
+from vectorstore.pinecone_store import add_documents, collection_count, reset_store
 from rag.chain import ask, ask_stream
 
 app = FastAPI(
     title="RAG-Llama API",
-    description="Retrieval-Augmented Generation powered by Llama + ChromaDB",
+    description="Retrieval-Augmented Generation powered by Ollama embeddings + Gemini chat + Pinecone",
     version="1.0.0",
 )
 

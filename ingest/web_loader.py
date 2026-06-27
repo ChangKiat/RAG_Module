@@ -14,8 +14,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from typing import List
 
+import requests
+import trafilatura
 from langchain_core.documents import Document
-from langchain_community.document_loaders import WebBaseLoader
 from langchain_community.document_loaders.recursive_url_loader import RecursiveUrlLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
@@ -27,18 +28,39 @@ import config
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def _html_extractor(raw_html: str) -> str:
-    """Strip tags, collapse whitespace."""
+def _extract_main_content(raw_html: str, url: str = "") -> str:
+    """Extract main article text using trafilatura; fall back to basic stripping."""
+    text = trafilatura.extract(
+        raw_html,
+        url=url or None,
+        include_comments=False,
+        include_tables=True,
+        no_fallback=False,
+    )
+    if text and text.strip():
+        return text.strip()
+
     try:
-        soup = BeautifulSoup(raw_html, "lxml")   # changed from html.parser
+        soup = BeautifulSoup(raw_html, "lxml")
     except Exception:
-        soup = BeautifulSoup(raw_html, "html.parser")  # fallback
+        soup = BeautifulSoup(raw_html, "html.parser")
     for tag in soup(["script", "style", "nav", "footer", "header"]):
         tag.decompose()
     return " ".join(soup.get_text(separator=" ").split())
 
 
-def _make_splitter() -> RecursiveCharacterTextSplitter:
+def _fetch_html(url: str) -> str:
+    response = requests.get(url, timeout=15, headers={"User-Agent": os.environ["USER_AGENT"]})
+    response.raise_for_status()
+    return response.text
+
+
+def _html_extractor(raw_html: str) -> str:
+    """Extractor callback for RecursiveUrlLoader (URL not available here)."""
+    return _extract_main_content(raw_html)
+
+
+def _make_splitter():
     return RecursiveCharacterTextSplitter(
         chunk_size=config.CHUNK_SIZE,
         chunk_overlap=config.CHUNK_OVERLAP,
@@ -46,17 +68,53 @@ def _make_splitter() -> RecursiveCharacterTextSplitter:
     )
 
 
+def _page_title(raw_html: str) -> str:
+    try:
+        soup = BeautifulSoup(raw_html, "lxml")
+    except Exception:
+        soup = BeautifulSoup(raw_html, "html.parser")
+    title_tag = soup.find("title")
+    return title_tag.get_text(strip=True) if title_tag else ""
+
+
+def _filter_chunks(chunks: List[Document]) -> List[Document]:
+    filtered = [
+        c for c in chunks
+        if len(c.page_content.strip()) >= config.MIN_CHUNK_CHARS
+    ]
+    for i, chunk in enumerate(filtered):
+        chunk.metadata["chunk_index"] = i
+    return filtered
+
+
+def _split_and_filter(raw_docs: List[Document]) -> List[Document]:
+    splitter = _make_splitter()
+    chunks = splitter.split_documents(raw_docs)
+    return _filter_chunks(chunks)
+
+
 # ── public API ────────────────────────────────────────────────────────────────
 
 def load_single_url(url: str) -> List[Document]:
     """Fetch a single web page and return chunked Documents."""
     print(f"[web_loader] Loading single URL: {url}")
-    loader = WebBaseLoader(url)
-    loader.requests_kwargs = {"timeout": 15}
-    raw_docs = loader.load()
+    html = _fetch_html(url)
+    text = _extract_main_content(html, url=url)
+    if not text:
+        print(f"[web_loader] ⚠  No content extracted from {url}")
+        return []
 
-    splitter = _make_splitter()
-    chunks = splitter.split_documents(raw_docs)
+    raw_docs = [
+        Document(
+            page_content=text,
+            metadata={
+                "source": url,
+                "title": _page_title(html),
+                "doc_type": "web",
+            },
+        )
+    ]
+    chunks = _split_and_filter(raw_docs)
     print(f"[web_loader] → {len(chunks)} chunks from single page")
     return chunks
 
@@ -75,16 +133,18 @@ def load_website(url: str,
         max_depth=max_depth,
         extractor=_html_extractor,
         timeout=15,
-        prevent_outside=True,   # stay on same domain
+        prevent_outside=True,
     )
 
     raw_docs = loader.load()
-    # Respect hard page cap
     raw_docs = raw_docs[:max_pages]
     print(f"[web_loader] Crawled {len(raw_docs)} pages")
 
-    splitter = _make_splitter()
-    chunks = splitter.split_documents(raw_docs)
+    for doc in raw_docs:
+        doc.metadata.setdefault("doc_type", "web")
+        doc.metadata.setdefault("title", "")
+
+    chunks = _split_and_filter(raw_docs)
     print(f"[web_loader] → {len(chunks)} total chunks after splitting")
     return chunks
 

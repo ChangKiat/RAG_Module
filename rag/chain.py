@@ -12,6 +12,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from typing import Iterator, List, Optional
+from pathlib import Path
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.documents import Document
@@ -46,11 +47,28 @@ _PROMPT = ChatPromptTemplate.from_messages([
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+def _source_label(doc: Document) -> str:
+    source = doc.metadata.get("source", "unknown")
+    doc_type = doc.metadata.get("doc_type", "")
+    if doc_type == "pdf":
+        filename = doc.metadata.get("filename") or Path(source).name
+        page = doc.metadata.get("page")
+        if page:
+            return f"{filename}, page {page}"
+        return filename
+    if doc_type == "web":
+        title = doc.metadata.get("title", "")
+        if title:
+            return f"{title} ({source})"
+        return source
+    return source
+
+
 def _format_docs(docs: List[Document]) -> str:
     parts = []
     for i, doc in enumerate(docs, 1):
-        source = doc.metadata.get("source", "unknown")
-        parts.append(f"[{i}] (source: {source})\n{doc.page_content}")
+        label = _source_label(doc)
+        parts.append(f"[{i}] (source: {label})\n{doc.page_content}")
     return "\n\n".join(parts)
 
 

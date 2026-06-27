@@ -1,8 +1,7 @@
 """
 ingest/doc_loader.py
 ────────────────────
-Load local documents (PDF, TXT, MD, HTML, CSV) and return chunked
-LangChain Documents ready for embedding.
+Load PDF documents and return chunked LangChain Documents ready for embedding.
 """
 
 from __future__ import annotations
@@ -14,13 +13,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from pathlib import Path
 from typing import List
 
+import fitz  # pymupdf
 from langchain_core.documents import Document
-from langchain_community.document_loaders import (
-    PyPDFLoader,
-    TextLoader,
-    UnstructuredHTMLLoader,
-    CSVLoader,
-)
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 import config
@@ -28,7 +22,13 @@ import config
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
-def _make_splitter() -> RecursiveCharacterTextSplitter:
+def _make_splitter(file_type: str = "default"):
+    if file_type == "pdf":
+        return RecursiveCharacterTextSplitter(
+            chunk_size=config.PDF_CHUNK_SIZE,
+            chunk_overlap=config.PDF_CHUNK_OVERLAP,
+            separators=["\n\n", "\n", ". ", "! ", "? ", " ", ""],
+        )
     return RecursiveCharacterTextSplitter(
         chunk_size=config.CHUNK_SIZE,
         chunk_overlap=config.CHUNK_OVERLAP,
@@ -36,34 +36,60 @@ def _make_splitter() -> RecursiveCharacterTextSplitter:
     )
 
 
-def _loader_for(path: Path):
-    ext = path.suffix.lower()
-    if ext == ".pdf":
-        return PyPDFLoader(str(path))
-    elif ext in (".txt", ".md"):
-        return TextLoader(str(path), encoding="utf-8")
-    elif ext == ".html":
-        return UnstructuredHTMLLoader(str(path))
-    elif ext == ".csv":
-        return CSVLoader(str(path))
-    else:
-        raise ValueError(f"Unsupported file type: {ext}")
+def _load_pdf(path: Path) -> List[Document]:
+    """Extract text per page using PyMuPDF."""
+    raw_docs: List[Document] = []
+    with fitz.open(str(path)) as doc:
+        for page_num, page in enumerate(doc, start=1):
+            text = page.get_text("text").strip()
+            if not text:
+                continue
+            raw_docs.append(
+                Document(
+                    page_content=text,
+                    metadata={
+                        "source": str(path),
+                        "filename": path.name,
+                        "page": page_num,
+                        "doc_type": "pdf",
+                    },
+                )
+            )
+    return raw_docs
+
+
+def _filter_chunks(chunks: List[Document]) -> List[Document]:
+    """Drop empty or too-short chunks before embedding."""
+    filtered = [
+        c for c in chunks
+        if len(c.page_content.strip()) >= config.MIN_CHUNK_CHARS
+    ]
+    for i, chunk in enumerate(filtered):
+        chunk.metadata["chunk_index"] = i
+    return filtered
 
 
 # ── public API ────────────────────────────────────────────────────────────────
 
 def load_file(file_path: str) -> List[Document]:
-    """Load a single file and return chunked Documents."""
     path = Path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
 
-    print(f"[doc_loader] Loading file: {path.name}")
-    loader = _loader_for(path)
-    raw_docs = loader.load()
+    ext = path.suffix.lower()
+    if ext not in config.SUPPORTED_EXTENSIONS:
+        raise ValueError(f"Unsupported file type: {ext}")
 
-    splitter = _make_splitter()
+    print(f"[doc_loader] Loading file: {path.name}")
+
+    if ext == ".pdf":
+        raw_docs = _load_pdf(path)
+        splitter = _make_splitter("pdf")
+    else:
+        raise ValueError(f"Unsupported file type: {ext}")
+
     chunks = splitter.split_documents(raw_docs)
+    chunks = _filter_chunks(chunks)
     print(f"[doc_loader] → {len(chunks)} chunks from {path.name}")
     return chunks
 

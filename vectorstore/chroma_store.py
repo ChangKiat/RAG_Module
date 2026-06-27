@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from typing import List, Optional
 
 from langchain_chroma import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain_core.documents import Document
 
 import config
@@ -26,9 +26,9 @@ _store: Optional[Chroma] = None
 
 
 def _embeddings():
-    return GoogleGenerativeAIEmbeddings(
-        model=config.EMBED_MODEL,   # no "models/" prefix needed
-        google_api_key=config.GEMINI_API_KEY,
+    return OllamaEmbeddings(
+        model=config.EMBED_MODEL,
+        base_url=config.OLLAMA_BASE_URL,
     )
 
 
