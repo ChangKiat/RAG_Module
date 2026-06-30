@@ -14,7 +14,7 @@ from streamlit_extras.colored_header import colored_header   # pip install strea
 from ingest.web_loader   import load_single_url, load_website
 from ingest.doc_loader   import load_file
 from vectorstore.pinecone_store import add_documents, collection_count, reset_store
-from rag.chain           import ask_stream, ask
+from rag.chain           import ask_stream, get_sources_for
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Page config
@@ -62,41 +62,133 @@ section[data-testid="stSidebar"] {
 }
 section[data-testid="stSidebar"] * { color: var(--text) !important; }
 
-/* ── chat bubbles ────────────────────────────────────────── */
-.chat-bubble {
-    border-radius: 16px;
-    padding: 14px 18px;
-    margin: 6px 0;
-    line-height: 1.65;
-    font-size: 0.95rem;
+/* ── native chat messages ─────────────────────────────────── */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    border-color: var(--border) !important;
 }
-.bubble-user {
-    background: var(--user-bg);
-    border: 1px solid var(--border);
-    margin-left: 8%;
+
+[data-testid="stChatMessage"] {
+    max-width: 820px;
+    margin: 0 auto 1rem auto;
+    padding: 0.25rem 0;
 }
-.bubble-ai {
+
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] {
     background: var(--ai-bg);
     border: 1px solid var(--border);
-    margin-right: 8%;
+    border-radius: 18px;
+    padding: 14px 18px;
+    line-height: 1.65;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 }
-.bubble-label {
-    font-size: 0.72rem;
+
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) [data-testid="stMarkdownContainer"] {
+    background: var(--user-bg);
+    border-color: #3a4560;
+}
+
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] p {
+    margin-bottom: 0.5rem;
+}
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] p:last-child {
+    margin-bottom: 0;
+}
+
+[data-testid="chatAvatarIcon-user"],
+[data-testid="chatAvatarIcon-assistant"] {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    font-size: 1.1rem !important;
+}
+
+/* chat input composer */
+[data-testid="stChatInput"] {
+    max-width: 820px;
+    margin: 0 auto;
+}
+[data-testid="stChatInput"] textarea {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 16px !important;
+    color: var(--text) !important;
+    font-family: 'Syne', sans-serif !important;
+    font-size: 0.95rem !important;
+    padding: 12px 16px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+[data-testid="stChatInput"] textarea:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px rgba(232, 162, 69, 0.2) !important;
+}
+
+/* scrollable chat container */
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stVerticalBlock"] {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stVerticalBlock"]::-webkit-scrollbar {
+    width: 6px;
+}
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stVerticalBlock"]::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+/* empty state */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 320px;
+    padding: 2rem;
+    margin: 0 auto;
+    max-width: 480px;
+    border: 1px dashed var(--border);
+    border-radius: 20px;
+    background: linear-gradient(160deg, #161922 0%, #12151c 100%);
+}
+.empty-state-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.9;
+}
+.empty-state h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 0.5rem 0;
+}
+.empty-state p {
+    font-size: 0.88rem;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* source pills */
+.sources-row {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+.sources-label {
+    display: block;
+    font-size: 0.68rem;
     font-weight: 600;
-    letter-spacing: .08em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
+    color: var(--muted);
     margin-bottom: 6px;
 }
-.label-user { color: var(--accent2); }
-.label-ai   { color: var(--accent); }
-
-/* source pill */
 .source-pill {
     display: inline-block;
     background: #1e2435;
     border: 1px solid var(--border);
     border-radius: 20px;
-    padding: 2px 10px;
+    padding: 3px 11px;
     font-size: 0.72rem;
     color: var(--accent2);
     margin: 3px 4px 3px 0;
@@ -159,13 +251,6 @@ section[data-testid="stSidebar"] * { color: var(--text) !important; }
 
 /* divider */
 hr { border-color: var(--border) !important; }
-
-/* scrollable chat area */
-.chat-area {
-    max-height: 62vh;
-    overflow-y: auto;
-    padding-right: 4px;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -181,6 +266,16 @@ if "ingested_files" not in st.session_state:
     st.session_state.ingested_files = set()  # track filenames already ingested
 if "ingested_urls" not in st.session_state:
     st.session_state.ingested_urls = set()  # track URLs already ingested
+
+
+def _render_sources(sources: list) -> None:
+    if not sources:
+        return
+    pills = "".join(f'<span class="source-pill">{s}</span>' for s in sources)
+    st.markdown(
+        f'<div class="sources-row"><span class="sources-label">Sources</span>{pills}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -330,64 +425,48 @@ st.markdown("""
     Ask your Knowledge Base
 </h1>
 <p style='color:#7a8199;margin-top:4px;font-size:.9rem;'>
-    Powered by Llama · ChromaDB · LangChain
+    Ollama embeddings · Gemini chat · Pinecone
 </p>
 """, unsafe_allow_html=True)
 st.divider()
 
-# render past messages
-chat_html = '<div class="chat-area">'
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        chat_html += f"""
-        <div class="chat-bubble bubble-user">
-            <div class="bubble-label label-user">You</div>
-            {msg["content"]}
-        </div>"""
-    else:
-        sources_html = ""
-        if msg.get("sources"):
-            pills = "".join(f'<span class="source-pill">🔗 {s}</span>' for s in msg["sources"])
-            sources_html = f"<div style='margin-top:10px;'>{pills}</div>"
-        chat_html += f"""
-        <div class="chat-bubble bubble-ai">
-            <div class="bubble-label label-ai">🦙 Llama</div>
-            {msg["content"]}{sources_html}
-        </div>"""
-chat_html += "</div>"
-st.markdown(chat_html, unsafe_allow_html=True)
+chat_container = st.container(height=520)
+with chat_container:
+    if not st.session_state.messages:
+        st.markdown("""
+        <div class="empty-state">
+            <div class="empty-state-icon">💬</div>
+            <h3>Start a conversation</h3>
+            <p>Ingest a PDF or website in the sidebar, then ask a question here.</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-# ── input bar ────────────────────────────────────────────────────────────────
-with st.form(key="chat_form", clear_on_submit=True):
-    col_q, col_btn = st.columns([9, 1])
-    with col_q:
-        question = st.text_input(
-            "question",
-            label_visibility="collapsed",
-            placeholder="Ask anything about your ingested content …",
-        )
-    with col_btn:
-        send = st.form_submit_button("Ask", use_container_width=True)
+    for msg in st.session_state.messages:
+        avatar = "🧑" if msg["role"] == "user" else "✨"
+        with st.chat_message(msg["role"], avatar=avatar):
+            st.markdown(msg["content"])
+            if msg["role"] == "assistant":
+                _render_sources(msg.get("sources", []))
 
-if send and question.strip():
-    st.session_state.messages.append({"role": "user", "content": question.strip(), "sources": []})
+if question := st.chat_input("Ask anything about your ingested content …", key="chat_input"):
+    q = question.strip()
+    if q:
+        with st.chat_message("user", avatar="🧑"):
+            st.markdown(q)
+        with st.chat_message("assistant", avatar="✨"):
+            answer = st.write_stream(ask_stream(q))
 
-    with st.spinner("Thinking …"):
-        result = ask(question.strip())
-        answer  = result["answer"]
-        sources = result["sources"]
+        source_docs = get_sources_for(q)
+        sources = list({
+            d.metadata.get("source", "")
+            for d in source_docs
+            if d.metadata.get("source")
+        })
 
-    st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources})
-    st.rerun()
-
-# ── handle send ───────────────────────────────────────────────────────────────
-if send and question.strip():
-    st.session_state.messages.append({"role": "user", "content": question.strip(), "sources": []})
-
-    with st.spinner("Thinking …"):
-        result = ask(question.strip())
-        answer  = result["answer"]
-        sources = result["sources"]
-
-    st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources})
-    st.rerun()
+        st.session_state.messages.append({"role": "user", "content": q, "sources": []})
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": answer,
+            "sources": sources,
+        })
+        st.rerun()
